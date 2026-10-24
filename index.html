@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Closet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg1:#f4f4f5; --bg2:#dcdcde; --ink:#111; --muted:#777; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{
+    font-family:'Inter',system-ui,sans-serif; color:var(--ink); overflow:hidden;
+    background:radial-gradient(ellipse at 50% 45%, #fff 0%, var(--bg1) 45%, var(--bg2) 100%);
+  }
+  .brand{ position:fixed; top:22px; left:0; right:0; text-align:center;
+    font-family:'Anton',Impact,sans-serif; font-size:26px; letter-spacing:.12em; z-index:5; }
+
+  /* ---------- rail ---------- */
+  .closet{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; padding-top:20vh; }
+  .rail{ position:relative; width:min(86vw,1000px); height:6px; border-radius:6px;
+    background:linear-gradient(#c9c9cc,#8c8c90 55%,#b5b5b8); box-shadow:0 2px 4px rgba(0,0,0,.18); }
+  .rail::before,.rail::after{ content:''; position:absolute; top:-5px; width:6px; height:16px; border-radius:3px; background:#8c8c90; }
+  .rail::before{ left:-3px } .rail::after{ right:-3px }
+  .items{ width:min(86vw,1000px); display:flex; justify-content:space-around; align-items:flex-start; margin-top:-2px; }
+  .item{ background:none; border:0; cursor:pointer; width:clamp(52px,14vw,150px); transform-origin:50% 0;
+    animation:sway 5s ease-in-out infinite; transition:transform .35s cubic-bezier(.2,.8,.2,1), filter .4s, opacity .4s; }
+  .item:nth-child(2){ animation-delay:-.8s } .item:nth-child(3){ animation-delay:-1.6s }
+  .item:nth-child(4){ animation-delay:-2.4s } .item:nth-child(5){ animation-delay:-3.2s } .item:nth-child(6){ animation-delay:-4s }
+  .item svg{ width:100%; height:auto; display:block; filter:drop-shadow(0 10px 8px rgba(0,0,0,.18)); }
+  @keyframes sway{ 0%,100%{ transform:rotate(-1.3deg) } 50%{ transform:rotate(1.3deg) } }
+  .item:hover{ animation:none; transform:translateY(-8px) scale(1.1); }
+  .hint{ margin-top:6vh; font-size:12px; letter-spacing:.2em; color:var(--muted); text-transform:uppercase; transition:opacity .3s; }
+
+  /* ---------- focus mode ---------- */
+  .focus .item{ filter:blur(7px); opacity:.6; transform:scale(.9); animation:none; }
+  .focus .item.active{ opacity:0; }
+  .focus .hint{ opacity:0; }
+  .stage{ position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    pointer-events:none; opacity:0; transition:opacity .35s; z-index:10; padding-top:6vh; }
+  .focus .stage{ opacity:1; }
+  .big{ height:min(54vh,480px); aspect-ratio:200/264; transition:transform .28s ease; transform-origin:50% 50%; }
+  .big svg{ width:100%; height:100%; filter:drop-shadow(0 22px 22px rgba(0,0,0,.22)); }
+  .big.flip{ transform:rotateY(90deg); }
+  .info{ text-align:center; margin-top:8px; pointer-events:auto; }
+  .info h2{ font-family:'Anton',Impact,sans-serif; font-weight:400; font-size:clamp(15px,2.2vw,20px); letter-spacing:.1em; text-transform:uppercase; }
+  .price{ color:var(--muted); font-size:13px; margin:2px 0 10px; }
+  .toggle{ display:inline-flex; border:1px solid #bbb; border-radius:99px; overflow:hidden; background:#fff; }
+  .toggle button{ border:0; background:none; padding:6px 18px; font:600 11px 'Inter',sans-serif; letter-spacing:.14em; cursor:pointer; }
+  .toggle button.on{ background:#111; color:#fff; }
+  .avail{ display:block; margin:12px auto 0; border:1px solid #999; background:none; border-radius:99px; padding:7px 20px;
+    font:600 10px 'Inter',sans-serif; letter-spacing:.16em; cursor:pointer; }
+  .avail:hover{ background:#111; color:#fff; }
+  .sizes{ margin-top:8px; font-size:12px; color:var(--muted); min-height:16px; }
+  .nav{ position:fixed; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; border:1px solid #bbb;
+    background:#fff; cursor:pointer; font-size:16px; z-index:20; display:none; }
+  .focus .nav{ display:block; } .nav.l{ left:14px } .nav.r{ right:14px }
+  .close{ position:fixed; top:16px; right:18px; z-index:20; border:0; background:none; font-size:26px; cursor:pointer; display:none; }
+  .focus .close{ display:block; }
+</style>
+</head>
+<body>
+<div class="brand" id="brand"></div>
+
+<main class="closet" id="closet">
+  <div class="rail"></div>
+  <div class="items" id="items"></div>
+  <p class="hint">Hover &amp; click a piece</p>
+</main>
+
+<section class="stage" id="stage">
+  <div class="big" id="big"></div>
+  <div class="info">
+    <h2 id="name"></h2>
+    <p class="price" id="price"></p>
+    <div class="toggle"><button id="bFront" class="on">FRONT</button><button id="bBack">BACK</button></div>
+    <button class="avail" id="avail">SEE AVAILABILITY</button>
+    <p class="sizes" id="sizes"></p>
+  </div>
+</section>
+
+<button class="nav l" id="prev" aria-label="Previous">&#8592;</button>
+<button class="nav r" id="next" aria-label="Next">&#8594;</button>
+<button class="close" id="close" aria-label="Close">&times;</button>
+
+<script>
+/* =====================  EDIT YOUR STUFF HERE  ===================== */
+const BRAND = "YOUR BRAND";
+const SIZES = "S · M · L · XL available";
+// type: tank | tee | hoodie | zip | long | polo
+// image: optional. Put your own photos in an /img folder and set e.g. image:{front:"img/a-front.png", back:"img/a-back.png"}
+const ITEMS = [
+  { name:"Vencedores Mesh Tank Top", price:"$48",  type:"tank",   color:"#17171b", ink:"#f2f2f2", label:"Vencedores", num:"23" },
+  { name:"Heavy Boxy Tee",           price:"$39",  type:"tee",    color:"#e9e5da", ink:"#1b1b1b", label:"Closet Club", num:"07" },
+  { name:"Washed Hoodie",            price:"$79",  type:"hoodie", color:"#3f7893", ink:"#e8f1f5", label:"Studio",      num:"88" },
+  { name:"Racing Track Jacket",      price:"$95",  type:"zip",    color:"#c8202b", ink:"#ffffff", label:"Racing",      num:"11" },
+  { name:"Thermal Long Sleeve",      price:"$55",  type:"long",   color:"#8a5a3c", ink:"#f4e8dc", label:"Heritage",    num:"45" },
+  { name:"Court Polo",               price:"$59",  type:"polo",   color:"#1d2f6f", ink:"#ffffff", label:"Court",       num:"19" }
+];
+/* ================================================================== */
+
+let uid = 0;
+function garment(it, side){
+  if (it.image && it.image[side]) return `<svg viewBox="0 -24 200 264"><image href="${it.image[side]}" x="0" y="-24" width="200" height="264" preserveAspectRatio="xMidYMid meet"/></svg>`;
+  const f = side === "front", id = "g" + (uid++), c = it.color, ink = it.ink;
+  const tee  = `M70 40 L38 52 L14 96 L38 108 L56 84 L56 224 L144 224 L144 84 L162 108 L186 96 L162 52 L130 40 Q100 ${f?66:50} 70 40 Z`;
+  const tank = `M74 36 L74 66 Q54 84 56 112 L56 224 L144 224 L144 112 Q146 84 126 66 L126 36 L114 36 Q100 ${f?78:58} 86 36 Z`;
+  const long = n => `M70 40 L38 52 L16 196 L40 200 L58 102 L58 224 L142 224 L142 102 L160 200 L184 196 L162 52 L130 40 Q100 ${n} 70 40 Z`;
+  const paths = { tee, tank, polo: tee, long: long(f?64:50), hoodie: long(f?56:48), zip: long(f?58:50) };
+  const body = paths[it.type];
+  let extra = "", under = "";
+
+  if (it.type === "hoodie"){
+    extra += f
+      ? `<path d="M68 42 Q62 2 100 2 Q138 2 132 42 Q100 74 68 42Z" fill="${c}" stroke="rgba(0,0,0,.35)"/>
+         <path d="M80 40 Q100 62 120 40 Q118 14 100 14 Q82 14 80 40Z" fill="rgba(0,0,0,.45)"/>
+         <path d="M92 62 L92 92 M108 62 L108 92" stroke="${ink}" stroke-width="2.4" stroke-linecap="round"/>
+         <path d="M72 168 L128 168 L136 214 L64 214Z" fill="rgba(0,0,0,.12)" stroke="rgba(0,0,0,.35)"/>`
+      : `<path d="M70 42 Q64 14 100 12 Q136 14 130 42 Q100 56 70 42Z" fill="${c}" stroke="rgba(0,0,0,.35)"/>
+         <path d="M78 40 Q100 52 122 40" stroke="rgba(0,0,0,.3)" fill="none"/>`;
+  }
+  if (it.type === "zip"){
+    extra += `<path d="M72 40 Q100 ${f?54:48} 128 40" stroke="${ink}" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <path d="M22 150 L50 156 M24 164 L52 170 M178 150 L150 156 M176 164 L148 170" stroke="${ink}" stroke-width="3.4" stroke-linecap="round"/>
+      ${f?`<path d="M100 56 L100 224" stroke="${ink}" stroke-width="2.4" stroke-dasharray="3 2"/><rect x="97" y="56" width="6" height="12" rx="2" fill="#ddd"/>`:`<path d="M100 56 L100 224" stroke="rgba(0,0,0,.3)"/>`}`;
+  }
+  if (it.type === "long"){
+    extra += `<path d="M18 186 L41 191 M16 196 L40 200 M182 186 L159 191 M184 196 L160 200 M58 214 L142 214" stroke="rgba(0,0,0,.3)" stroke-width="3"/>
+      <path d="M70 40 Q100 ${f?64:50} 130 40" stroke="rgba(0,0,0,.35)" stroke-width="5" fill="none"/>`;
+  }
+  if (it.type === "tee"){
+    extra += `<path d="M70 40 Q100 ${f?66:50} 130 40" stroke="${ink}" stroke-opacity=".35" stroke-width="6" fill="none"/>
+      <path d="M56 214 L144 214" stroke="rgba(0,0,0,.18)" stroke-width="2"/>`;
+  }
+  if (it.type === "tank"){
+    extra += `<path d="M74 36 L74 66 Q54 84 56 112 M126 36 L126 66 Q146 84 144 112" stroke="${ink}" stroke-width="3.5" fill="none"/>
+      <path d="M86 36 Q100 ${f?78:58} 114 36" stroke="${ink}" stroke-width="3.5" fill="none"/>
+      <path d="M56 214 L144 214" stroke="${ink}" stroke-width="3"/>`;
+  }
+  if (it.type === "polo"){
+    extra += `<path d="M70 40 L98 40 L100 68 L82 56Z M130 40 L102 40 L100 68 L118 56Z" fill="${ink}" fill-opacity="${f?.9:.0}" stroke="rgba(0,0,0,.3)"/>
+      ${f?`<path d="M100 68 L100 106" stroke="rgba(0,0,0,.35)"/><circle cx="100" cy="80" r="2.2" fill="${ink}"/><circle cx="100" cy="94" r="2.2" fill="${ink}"/>`:`<path d="M70 40 Q100 50 130 40" stroke="${ink}" stroke-width="6" fill="none"/>`}
+      <path d="M14 96 L38 108 M186 96 L162 108" stroke="${ink}" stroke-width="3"/>`;
+  }
+
+  // artwork
+  let art = "";
+  const fam = "font-family=\"Anton,Impact,sans-serif\" text-anchor=\"middle\"";
+  const y = it.type === "hoodie" ? 150 : 128;
+  if (f){
+    art = it.type === "polo"
+      ? `<text x="132" y="104" ${fam} font-size="9" letter-spacing="1" fill="${ink}">${it.label.toUpperCase()}</text>`
+      : `<text x="100" y="${y}" ${fam} font-size="${it.type==='tank'?19:17}" letter-spacing="1" fill="${ink}">${it.label.toUpperCase()}</text>
+         <circle cx="100" cy="${y+22}" r="9" fill="none" stroke="${ink}" stroke-width="1.6"/>`;
+  } else {
+    art = `<text x="100" y="${y-22}" ${fam} font-size="10" letter-spacing="2" fill="${ink}">${it.label.toUpperCase()}</text>
+           <text x="100" y="${y+34}" ${fam} font-size="62" fill="${ink}">${it.num}</text>`;
+  }
+
+  const hook = `<path d="M100 36 L100 24 Q100 14 109 14 Q118 14 118 6 Q118 -4 108 -4" fill="none" stroke="#555" stroke-width="2.4" stroke-linecap="round"/>`;
+  const bar  = `<path d="M100 40 L52 58 M100 40 L148 58" stroke="#4a4a4d" stroke-width="3.2" stroke-linecap="round"/>`;
+
+  return `<svg viewBox="0 -24 200 264" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs><linearGradient id="${id}" x1="0" x2="1">
+      <stop offset="0" stop-color="#000" stop-opacity=".16"/><stop offset=".35" stop-color="#fff" stop-opacity=".12"/>
+      <stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient></defs>
+    ${bar}
+    <path d="${body}" fill="${c}" stroke="rgba(0,0,0,.35)" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="${body}" fill="url(#${id})"/>
+    ${extra}${art}${hook}
+  </svg>`;
+}
+
+// ---------- build rail ----------
+const $ = id => document.getElementById(id);
+const itemsEl = $("items"), closet = $("closet"), big = $("big");
+$("brand").textContent = BRAND; document.title = BRAND + " — Closet";
+let current = -1, side = "front";
+
+ITEMS.forEach((it,i)=>{
+  const b = document.createElement("button");
+  b.className = "item"; b.title = it.name; b.setAttribute("aria-label", it.name);
+  b.innerHTML = garment(it,"front");
+  b.onclick = () => open(i);
+  itemsEl.appendChild(b);
+});
+
+function show(){
+  const it = ITEMS[current];
+  big.innerHTML = garment(it, side);
+  $("name").textContent = it.name; $("price").textContent = it.price;
+  $("bFront").classList.toggle("on", side==="front"); $("bBack").classList.toggle("on", side==="back");
+  [...itemsEl.children].forEach((el,i)=> el.classList.toggle("active", i===current));
+}
+function open(i){
+  current = i; side = "front"; $("sizes").textContent = "";
+  document.body.classList.add("focus"); show();
+}
+function closeIt(){ current=-1; document.body.classList.remove("focus"); [...itemsEl.children].forEach(el=>el.classList.remove("active")); }
+function setSide(s){
+  if (s===side || current<0) return;
+  big.classList.add("flip");
+  setTimeout(()=>{ side=s; show(); big.classList.remove("flip"); }, 280);
+}
+function step(d){ if(current>=0) open((current+d+ITEMS.length)%ITEMS.length); }
+
+$("bFront").onclick = ()=>setSide("front");
+$("bBack").onclick  = ()=>setSide("back");
+$("avail").onclick  = ()=>{ $("sizes").textContent = SIZES; };
+$("close").onclick  = closeIt;
+$("prev").onclick   = ()=>step(-1);
+$("next").onclick   = ()=>step(1);
+closet.addEventListener("click", e=>{ if (e.target === closet) closeIt(); });
+addEventListener("keydown", e=>{
+  if (e.key==="Escape") closeIt();
+  if (e.key==="ArrowLeft") step(-1);
+  if (e.key==="ArrowRight") step(1);
+});
+</script>
+</body>
+</html>
